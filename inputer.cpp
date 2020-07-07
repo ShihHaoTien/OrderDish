@@ -56,6 +56,9 @@ void Inputer::scanInput()
             res=GREEN;
             delay(50);
         }
+        else {
+            continue;
+        }
         emit oneInput(res);
         delay(100);
     }

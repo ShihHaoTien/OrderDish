@@ -14,6 +14,13 @@
 #include <QStandardItemModel>
 #include <QStandardItem>
 
+#define UP 1
+#define CONFIRM 5
+#define DOWN 27
+#define LEFT 26
+#define RIGHT 7
+#define NO -1
+
 mainWidget::mainWidget(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::mainWidget)
@@ -40,17 +47,114 @@ mainWidget::mainWidget(QWidget *parent) :
     scanInputThread.start();//start sub thread
 
     emit startScan();
+
+    //set start state as 0
+    state=0;
+    //start tab page is 0
+    currentTab=0;
+    currentDish=0;
+    ui->tabWidget->setCurrentIndex(0);
+    //ui->meatTab->setFocus();
+}
+
+void mainWidget::stateSwitch(int input)
+{
+    qDebug()<<"cur state:"<<state<<" input:"<<input;
+    switch (state) {
+    //cursor on tab bar
+    case 0:
+        //if the input is DOWN, change state and break
+        if(input==DOWN && currentTab!=ui->tabWidget->count()-1){
+            state=1;
+            //set focus on the add button in first row
+            addBtnMap.find(currentTab).value().at(0)->setFocus();
+            break;
+        }
+        //if not,update current tab index and do not change state
+        if(input==RIGHT){
+            currentTab+=1;
+            if(currentTab>=ui->tabWidget->count()){
+                currentTab=0;
+            }
+        }else if(input==LEFT){
+            currentTab-=1;
+            if(currentTab<0){
+                currentTab=ui->tabWidget->count()-1;
+            }
+        }
+        ui->tabWidget->setCurrentIndex(currentTab);
+        //tabChanged(currentTab);
+        break;
+
+    //cursor in one table, add button column
+    case 1:
+        //turn to sub button column
+        if(input==RIGHT){
+            subBtnMap.find(currentTab).value().at(currentDish)->setFocus();
+            state=2;
+            break;
+        }else if(input==CONFIRM){
+            emit addBtnMap.find(currentTab).value().at(currentDish)->clicked();
+        }else if(input==DOWN){
+            currentDish+=1;
+            if(currentDish>=tableList.at(currentTab)->rowCount()){
+                currentDish=0;
+            }
+        }else if(input==UP){
+            currentDish-=1;
+            if(currentDish<0){
+                //currentDish=tableList.at(currentTab)->rowCount()-1;
+                //back to tab bar
+                currentDish=0;
+                ui->tabWidget->setCurrentIndex(currentTab);
+                state=0;
+                break;
+            }
+        }
+        addBtnMap.find(currentTab).value().at(currentDish)->setFocus();
+        break;
+
+    //cursor in sub button column
+    case 2:
+        if(input==LEFT){
+            addBtnMap.find(currentTab).value().at(currentDish)->setFocus();
+            state=1;
+            break;
+        }else if(input==CONFIRM){
+            emit subBtnMap.find(currentTab).value().at(currentDish)->clicked();
+        }else if(input==DOWN){
+            currentDish+=1;
+            if(currentDish>=tableList.at(currentTab)->rowCount()){
+                currentDish=0;
+            }
+        }else if(input==UP){
+            currentDish-=1;
+            if(currentDish<0){
+                //currentDish=tableList.at(currentTab)->rowCount()-1;
+                //back to tab bar
+                currentDish=0;
+                ui->tabWidget->setCurrentIndex(currentTab);
+                state=0;
+                break;
+            }
+        }
+        subBtnMap.find(currentTab).value().at(currentDish)->setFocus();
+        break;
+
+    default:
+        break;
+    }
 }
 
 void mainWidget::getOneInput(int i)
 {
     this->ui->label->setText(QString::number(i));
-
+    this->stateSwitch(i);//trans state
 }
 
 void mainWidget::tabChanged(int cur)
 {
-    qDebug()<<"tab count:"<<this->ui->tabWidget->count()<<" clicked tab:"<<cur;
+    //qDebug()<<"tab count:"<<this->ui->tabWidget->count()<<" clicked tab:"<<cur;
     if(cur==this->ui->tabWidget->count()-1){
         initOrderTable();
     }
@@ -109,6 +213,10 @@ void mainWidget::initTableByIndex(int index)
     QTableWidget* table=this->tableList.at(index);
     //the dish list
     QStringList dishes=this->dishNameMap.find(index).value();
+    //init a button list
+    QList<QPushButton*> addBtnList;
+    QList<QPushButton*> subBtnList;
+
 
     //hide headers
     table->horizontalHeader()->hide();
@@ -141,13 +249,20 @@ void mainWidget::initTableByIndex(int index)
        subBtn->setProperty("add",0);
        connect(subBtn,SIGNAL(clicked()),this,SLOT(addBtnClicked()));
        table->setCellWidget(i,3,subBtn);
-    }
 
+       //add buttons to list
+       addBtnList.insert(i,addBtn);
+       subBtnList.insert(i,subBtn);
+    }
+    //insert a k-v pair to button map
+    addBtnMap.insert(index,addBtnList);
+    subBtnMap.insert(index,subBtnList);
 
 }
 
 void mainWidget::initOrderTable()
 {
+    qDebug()<<"start init order!";
     QTableWidget* table=this->ui->orderTableWidget;
     table->clear();
     //hide headers
@@ -302,7 +417,7 @@ void mainWidget::requestFinished(QNetworkReply* reply)
     }
 }
 
-mainWidget::~mainWidget(    )
+ mainWidget::~mainWidget(    )
 {
     delete ui;
 }

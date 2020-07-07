@@ -8,7 +8,7 @@
 #include <qdebug.h>
 #include <QTableWidget>
 #include <QThread>
-
+#include <QPushButton>
 namespace Ui {
 class mainWidget;
 }
@@ -43,12 +43,20 @@ private:
     QList<Dish> orderList;
     QMap<int,QStringList> dishNameMap;//the map of dishes' name. Key is the tab index, value is a name list.
     QList<QTableWidget*> tableList;//the pointer of each table. Having same index with dishNameMap.
+    //button maps, key is page index, value is button list. Use page index and dish index to locate a button.
+    QMap<int,QList<QPushButton*>> addBtnMap;
+    QMap<int,QList<QPushButton*>> subBtnMap;
+
+    int currentTab;//current tab page index
+    int currentDish;//current dish index in one tab page
     QThread scanInputThread;
+    int state;//current state in FA
 
     void initDishMap();
     void initTables();//init the tables in each tab
     void initTableByIndex(int);
     void initOrderTable();
+    void stateSwitch(int);//state transfer function, arg is the input signal
 
 signals:
     void startScan();
