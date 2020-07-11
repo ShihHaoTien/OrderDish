@@ -1,6 +1,7 @@
 #include "mainwidget.h"
 #include "ui_mainwidget.h"
 #include "inputer.h"
+#include "mystyle.h"
 #include <QtNetwork/QNetworkRequest>
 #include <QtNetwork/QNetworkReply>
 #include <QtNetwork/QNetworkAccessManager>
@@ -253,7 +254,14 @@ void mainWidget::initTableByIndex(int index)
        //add buttons to list
        addBtnList.insert(i,addBtn);
        subBtnList.insert(i,subBtn);
+
+       //set button style
+       MyStyle::setButtonStyle(addBtn);
+       MyStyle::setButtonStyle(subBtn);
     }
+
+
+
     //insert a k-v pair to button map
     addBtnMap.insert(index,addBtnList);
     subBtnMap.insert(index,subBtnList);

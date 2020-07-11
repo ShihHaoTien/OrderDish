@@ -28,11 +28,13 @@ CONFIG += c++11
 SOURCES += \
         main.cpp \
         mainwidget.cpp \
-    inputer.cpp
+    inputer.cpp \
+    mystyle.cpp
 
 HEADERS += \
         mainwidget.h \
-    inputer.h
+    inputer.h \
+    mystyle.h
 
 FORMS += \
         mainwidget.ui
