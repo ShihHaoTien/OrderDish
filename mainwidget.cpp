@@ -2,6 +2,7 @@
 #include "ui_mainwidget.h"
 #include "inputer.h"
 #include "mystyle.h"
+#include "post.h"
 #include <QtNetwork/QNetworkRequest>
 #include <QtNetwork/QNetworkReply>
 #include <QtNetwork/QNetworkAccessManager>
@@ -49,6 +50,11 @@ mainWidget::mainWidget(QWidget *parent) :
 
     emit startScan();
 
+    //init POST class
+    post=new Post();
+    connect(post,&Post::ordersString,this,&mainWidget::receiveOrders);
+    post->getOrders(1);
+
     //set start state as 0
     state=0;
     //start tab page is 0
@@ -56,6 +62,11 @@ mainWidget::mainWidget(QWidget *parent) :
     currentDish=0;
     ui->tabWidget->setCurrentIndex(0);
     //ui->meatTab->setFocus();
+}
+
+void mainWidget::receiveOrders(QString str)
+{
+    qDebug()<<"rev: "<<str;
 }
 
 void mainWidget::stateSwitch(int input)

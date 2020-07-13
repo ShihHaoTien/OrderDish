@@ -9,6 +9,7 @@
 #include <QTableWidget>
 #include <QThread>
 #include <QPushButton>
+#include "post.h"
 namespace Ui {
 class mainWidget;
 }
@@ -58,6 +59,8 @@ private:
     void initOrderTable();
     void stateSwitch(int);//state transfer function, arg is the input signal
 
+    Post* post;
+
 signals:
     void startScan();
 
@@ -68,8 +71,13 @@ private slots:
     void tabChanged(int);//to determine whether at order page
     void sendOrders();
     void getOneInput(int);
+
 private slots:
-    void requestFinished(QNetworkReply*);
+    void requestFinished(QNetworkReply*);//get the reply of send orders
+    //void receiveOrders(QNetworkReply*);//get the reply of current orders
+public slots:
+    void receiveOrders(QString);//get the reply of current orders
+
 };
 
 #endif // MAINWIDGET_H

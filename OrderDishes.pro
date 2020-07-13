@@ -29,12 +29,14 @@ SOURCES += \
         main.cpp \
         mainwidget.cpp \
     inputer.cpp \
-    mystyle.cpp
+    mystyle.cpp \
+    post.cpp
 
 HEADERS += \
         mainwidget.h \
     inputer.h \
-    mystyle.h
+    mystyle.h \
+    post.h
 
 FORMS += \
         mainwidget.ui
