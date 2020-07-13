@@ -53,7 +53,9 @@ mainWidget::mainWidget(QWidget *parent) :
     //init POST class
     post=new Post();
     connect(post,&Post::ordersString,this,&mainWidget::receiveOrders);
-    post->getOrders(1);
+    //post->getOrders(1);
+
+    post->getMenu();
 
     //set start state as 0
     state=0;

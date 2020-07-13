@@ -1,7 +1,7 @@
 #ifndef POST_H
 #define POST_H
 #include <QObject>
-
+#include <QNetworkReply>
 class Post : public QObject
 {
     Q_OBJECT
@@ -9,11 +9,12 @@ public:
     explicit Post(QObject *parent = nullptr);
 
     //get the current order, arg is the table number
-    static void getOrders(int);
+    void getOrders(int);
     //get the menus
-    static void getMenu();
+    void getMenu();
 private slots:
-    void getOrdersFinished();
+    void getOrdersFinished(QNetworkReply*);
+    void getMenuFinished(QNetworkReply*);
 
 public:
     signals:

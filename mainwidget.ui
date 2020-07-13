@@ -83,6 +83,21 @@
      </property>
     </widget>
    </widget>
+   <widget class="QWidget" name="snackTab">
+    <attribute name="title">
+     <string>Snack</string>
+    </attribute>
+    <widget class="QTableWidget" name="snackTableWidget">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>0</y>
+       <width>541</width>
+       <height>851</height>
+      </rect>
+     </property>
+    </widget>
+   </widget>
    <widget class="QWidget" name="stapleTab">
     <attribute name="title">
      <string>Staple</string>
@@ -98,11 +113,11 @@
      </property>
     </widget>
    </widget>
-   <widget class="QWidget" name="snackTab">
+   <widget class="QWidget" name="drinkTab">
     <attribute name="title">
-     <string>Snack</string>
+     <string>页</string>
     </attribute>
-    <widget class="QTableWidget" name="snackTableWidget">
+    <widget class="QTableWidget" name="drinkTableWidget">
      <property name="geometry">
       <rect>
        <x>0</x>

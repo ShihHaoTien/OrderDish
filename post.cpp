@@ -16,6 +16,30 @@ Post::Post(QObject *parent) : QObject(parent)
 
 }
 
+void Post::getMenu()
+{
+    QNetworkRequest request;
+    request.setUrl(QUrl("http://dododawn.com:3888/menu_list"));
+
+    QNetworkAccessManager* netManager=new QNetworkAccessManager (this);
+    QMetaObject::Connection connRet = QObject::connect(netManager, SIGNAL(finished(QNetworkReply*)),
+                                                       this, SLOT(getOrdersFinished(QNetworkReply*)));
+    Q_ASSERT(connRet);
+
+    QJsonObject json;
+    QJsonDocument document;
+    document.setObject(json);
+    QByteArray byte_array = document.toJson(QJsonDocument::Compact);
+    QString json_str(byte_array);
+
+    QNetworkReply* reply=netManager->put(request,json_str.toUtf8());//send data
+    qDebug()<<"GET MENU:"<<json_str.toUtf8();;
+}
+
+void Post::getMenuFinished(QNetworkReply *)
+{
+
+}
 void Post::getOrders(int index)
 {
     QNetworkRequest request;
@@ -23,7 +47,7 @@ void Post::getOrders(int index)
 
     QNetworkAccessManager* netManager=new QNetworkAccessManager (this);
     QMetaObject::Connection connRet = QObject::connect(netManager, SIGNAL(finished(QNetworkReply*)),
-                                                       this, SLOT(receiveOrders(QNetworkReply*)));
+                                                       this, SLOT(getOrdersFinished(QNetworkReply*)));
     Q_ASSERT(connRet);
 
     QJsonObject json;
@@ -35,7 +59,7 @@ void Post::getOrders(int index)
     QString json_str(byte_array);
 
     QNetworkReply* reply=netManager->put(request,json_str.toUtf8());//send data
-    qDebug()<<json_str.toUtf8();
+    qDebug()<<"GET ORDERS"<<json_str.toUtf8();
 }
 
 void Post::getOrdersFinished(QNetworkReply* reply)
@@ -57,9 +81,9 @@ void Post::getOrdersFinished(QNetworkReply* reply)
         // 获取返回内容
         QByteArray array=reply->readAll();
         QString rev=QString::fromUtf8(array);
-        qDebug()<<array;
+        //qDebug()<<array;
         qDebug()<<rev;
-        emit ordersString(rev);
+        emit ordersString(rev.toUtf8());
         return;
         //qDebug() << reply->readAll();
     }

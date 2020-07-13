@@ -1,5 +1,5 @@
 #include "inputer.h"
-#include "wiringPi.h"
+//#include "wiringPi.h"
 #include <qdebug.h>
 #define RED 1
 #define BLACK 5
@@ -15,7 +15,7 @@ Inputer::Inputer(QObject *parent) : QObject(parent)
 
 void Inputer::scanInput()
 {
-    qDebug()<<"start to scan!";
+    /*qDebug()<<"start to scan!";
     wiringPiSetup();
     //set five io as input port
     pinMode(RED,INPUT);
@@ -61,6 +61,6 @@ void Inputer::scanInput()
         }
         emit oneInput(res);
         delay(100);
-    }
+    }*/
 
 }
