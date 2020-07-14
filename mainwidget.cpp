@@ -1,7 +1,6 @@
 #include "mainwidget.h"
 #include "ui_mainwidget.h"
 #include "inputer.h"
-#include "mystyle.h"
 #include "post.h"
 #include <QtNetwork/QNetworkRequest>
 #include <QtNetwork/QNetworkReply>
@@ -15,12 +14,17 @@
 #include <QJsonArray>
 #include <QStandardItemModel>
 #include <QStandardItem>
+#include <QFile>
+#include <QPainter>
+#include <QStyleOption>
+
 
 #define UP 1
 #define CONFIRM 5
 #define DOWN 27
 #define LEFT 26
 #define RIGHT 7
+#define BACK 25
 #define NO -1
 
 mainWidget::mainWidget(QWidget *parent) :
@@ -29,11 +33,34 @@ mainWidget::mainWidget(QWidget *parent) :
 {
     ui->setupUi(this);
     this->ui->label->setText("this is a test label");
+    this->setFixedSize(564,964);
     qDebug("init mainWidget");
+
+    //load qss
+    QString qss;
+    QFile qssFile(":/style.qss");
+    qssFile.open(QFile::ReadOnly);
+    if(qssFile.isOpen())
+    {
+        qDebug()<<"qss!";
+        qss = QLatin1String(qssFile.readAll());
+        qDebug()<<qss;
+        qApp->setStyleSheet(qss);
+        qssFile.close();
+    }
+
+
+    ui->tableLabel->setNum(1);
+
+
+
     //connections
     connect(ui->pushButton,SIGNAL(clicked()),this,SLOT(sendMessage()));
     connect(ui->tabWidget,SIGNAL(currentChanged(int)),this,SLOT(tabChanged(int)));
-    connect(ui->checkButton,SIGNAL(clicked),this,SLOT(sendOrders()));
+    connect(ui->checkButton,SIGNAL(clicked()),this,SLOT(sendOrders()));
+    connect(ui->addTableButton,SIGNAL(clicked()),this,SLOT(addTableNumber()));
+    connect(ui->subTableButton,SIGNAL(clicked()),this,SLOT(subTableNumber()));
+    //connect(ui->addTableButton,)
     //init dish map
     initDishMap();
     //init network service
@@ -54,17 +81,17 @@ mainWidget::mainWidget(QWidget *parent) :
     post=new Post();
     connect(post,&Post::ordersString,this,&mainWidget::receiveOrders);
     connect(post,&Post::menuString,this,&mainWidget::receiveMenu);
-    //post->getOrders(1);
+    //post->getOrders(12);
     post->getMenu();
 
     //set start state as 0
     state=0;
     //start tab page is 0
-    currentTab=0;
+    currentTab=ui->tabWidget->count()-1;
     currentDish=0;
-    ui->tabWidget->setCurrentIndex(0);
+    ui->tabWidget->setCurrentIndex(ui->tabWidget->count()-1);
     //ui->meatTab->setFocus();
-
+    ui->addTableButton->setStyleSheet("background-color:rgb(175,238,238)");
 }
 
 //receive the menu list and init tables
@@ -114,6 +141,7 @@ void mainWidget::receiveMenu(QString str)
     }
     initTableHeaders();
     initMenu();
+    post->getOrders(1);
 }
 
 void mainWidget::initMenu()
@@ -125,7 +153,80 @@ void mainWidget::initMenu()
 
 void mainWidget::receiveOrders(QString str)
 {
-    qDebug()<<"rev: "<<str;
+    if(str==NULL){
+        qDebug()<<"GET MENU ERROR";
+        return;
+    }
+    //qDebug()<<"rev orders: "<<str;
+    QJsonParseError parseJsonErr;
+    QJsonDocument document = QJsonDocument::fromJson(str.toUtf8(),&parseJsonErr);
+    if(!(parseJsonErr.error == QJsonParseError::NoError))
+    {
+        qDebug()<<tr("解析json文件错误！");
+        return;
+    }
+
+    preOrder.clear();
+
+    QJsonObject jsonObject = document.object();
+    //qDebug()<<"jsonObject[data]=="<<jsonObject["data"].toString();
+    if(jsonObject.contains(QStringLiteral("data")))
+    {
+
+        QJsonValue arrayValue = jsonObject.value(QStringLiteral("data"));
+        if(arrayValue.isArray()){
+            QJsonArray array=arrayValue.toArray();
+            //qDebug()<<"Array1:"<<array;
+            arrayValue=array.at(0);
+            jsonObject=arrayValue.toObject();
+            if(jsonObject.contains(QStringLiteral("order")))
+            {
+                arrayValue = jsonObject.value(QStringLiteral("order"));
+                if(arrayValue.isArray())
+                {
+                    QJsonArray array = arrayValue.toArray();
+                    for(int i=0;i<array.size();i++)
+                    {
+                        QJsonValue dishArray = array.at(i);
+                        QJsonObject dish = dishArray.toObject();
+                        int id = dish["id"].toInt();
+                        QString name = dish["name"].toString();
+                        //int type = dish["type"].toInt();
+                        QString am=dish["number"].toString();
+                        int amt=am.replace("\"","").toInt();
+                        Order o;
+                        o.amount=amt;
+                        for(int i=0;i<menu.size();++i){
+                            if(id==menu[i].id){
+                                o.dish=&menu[i];
+                                break;
+                            }
+                        }
+                        qDebug()<<"pre id:"<<id<<" name:"<<name<<" amt:"<<amt;
+                        preOrder.append(o);
+                    }
+                }
+            }
+        }
+    }
+    //go back menu, set pre order's amount
+    if(preOrder.size()>0){
+        for(int i=0;i<preOrder.size();++i){
+            Order pre=preOrder.at(i);
+            QTableWidget* table=tableList.at(pre.dish->tabIndex);
+            for(int j=0;j<table->rowCount();++j){
+                // QTableWidgetItem* item=(QTableWidgetItem*)table->cellWidget(j,0);
+                 //QString name=item->text();
+                QString name=table->item(j,0)->text();
+                if(name==pre.dish->name){
+                     QLabel* label=(QLabel*)table->cellWidget(j,4);
+                     int amt=label->text().toInt();
+                     label->setNum(pre.amount);
+                 }
+            }
+        }
+    }
+    initOrderTable();
 }
 
 void mainWidget::stateSwitch(int input)
@@ -135,14 +236,19 @@ void mainWidget::stateSwitch(int input)
     //cursor on tab bar
     case 0:
         //if the input is DOWN, change state and break
-        if(input==DOWN && currentTab!=ui->tabWidget->count()-1){
-            state=1;
-            //set focus on the add button in first row
-            addBtnMap.find(currentTab).value().at(0)->setFocus();
+        if(input==DOWN){
+            if(currentTab!=ui->tabWidget->count()-1){
+                state=1;
+                //set focus on the add button in first row
+                addBtnMap.find(currentTab).value().at(0)->setFocus();
+            }else if(currentTab==ui->tabWidget->count()-1){
+                state=3;
+                //get in order page
+                ui->addTableButton->setFocus();
+                ui->addTableButton->setStyleSheet({"background-color:#0099FF"});
+            }
             break;
-        }
-        //if not,update current tab index and do not change state
-        if(input==RIGHT){
+        }else if(input==RIGHT){        //if not,update current tab index and do not change state
             currentTab+=1;
             if(currentTab>=ui->tabWidget->count()){
                 currentTab=0;
@@ -174,13 +280,12 @@ void mainWidget::stateSwitch(int input)
         }else if(input==UP){
             currentDish-=1;
             if(currentDish<0){
-                //currentDish=tableList.at(currentTab)->rowCount()-1;
-                //back to tab bar
-                currentDish=0;
-                ui->tabWidget->setCurrentIndex(currentTab);
-                state=0;
-                break;
+                currentDish=tableList.at(currentTab)->rowCount()-1;
             }
+        }else if(input==BACK){
+            state=0;
+            ui->tabWidget->setCurrentIndex(currentTab);
+            currentDish=0;
         }
         addBtnMap.find(currentTab).value().at(currentDish)->setFocus();
         break;
@@ -201,15 +306,59 @@ void mainWidget::stateSwitch(int input)
         }else if(input==UP){
             currentDish-=1;
             if(currentDish<0){
-                //currentDish=tableList.at(currentTab)->rowCount()-1;
-                //back to tab bar
-                currentDish=0;
-                ui->tabWidget->setCurrentIndex(currentTab);
-                state=0;
-                break;
+                currentDish=tableList.at(currentTab)->rowCount()-1;
             }
+        }else if(input==BACK){
+            state=0;
+            ui->tabWidget->setCurrentIndex(currentTab);
         }
         subBtnMap.find(currentTab).value().at(currentDish)->setFocus();
+        break;
+
+    //cursor on add table button
+    case 3:
+        //go to sub button or check button
+        if(input==RIGHT){
+            ui->subTableButton->setFocus();
+            state=4;
+        }else if(input==DOWN){
+            ui->checkButton->setFocus();
+            state=5;
+        }else if(input==CONFIRM){
+            emit ui->addTableButton->clicked();
+        }else if(input==BACK){
+            state=0;
+            ui->tabWidget->setCurrentIndex(currentTab);
+        }
+        break;
+
+    //cursor on sub table button
+    case 4:
+        if(input==LEFT){
+            ui->addTableButton->setFocus();
+            state=3;
+        }else if(input==DOWN){
+            ui->checkButton->setFocus();
+            state=5;
+        }else if(input==CONFIRM){
+            emit ui->subTableButton->clicked();
+        }else if(input==BACK){
+            state=0;
+            ui->tabWidget->setCurrentIndex(currentTab);
+        }
+        break;
+
+    //cursor on check button
+    case 5:
+        if(input==CONFIRM){
+            emit ui->checkButton->clicked();
+        }else if(input==UP){
+            ui->addTableButton->setFocus();
+            state=3;
+        }else if(input==BACK){
+            state=0;
+            ui->tabWidget->setCurrentIndex(currentTab);
+        }
         break;
 
     default:
@@ -234,36 +383,22 @@ void mainWidget::tabChanged(int cur)
 void mainWidget::initDishMap()
 {
     QStringList dishes;
-    dishes<<QString::fromLocal8Bit("干煸辣子鸡")
-          <<QString::fromLocal8Bit("滋补羊肉锅")
-          <<QString::fromLocal8Bit("香煎龙利鱼")
-          <<QString::fromLocal8Bit("椒盐玉米虾");
     this->tableList.append(this->ui->meatTableWidget);
     this->dishNameMap.insert(0,dishes);//Meat ends
     dishes.clear();
-    dishes<<QString::fromLocal8Bit("山药养生烩")
-          <<QString::fromLocal8Bit("清炒芥兰")
-          <<QString::fromLocal8Bit("豆角炒茄条")
-          <<QString::fromLocal8Bit("蜜汁紫薯");
+
     this->tableList.append(this->ui->vegeTableWidget);
     this->dishNameMap.insert(1,dishes);//Vegetable ends
     dishes.clear();
-    dishes<<QString::fromLocal8Bit("功夫汤")
-          <<QString::fromLocal8Bit("罗宋汤")
-          <<QString::fromLocal8Bit("蘑菇浓汤");
+
     this->tableList.append(this->ui->soupTableWidget);
     this->dishNameMap.insert(2,dishes);//Soup ends
     dishes.clear();
-    dishes<<QString::fromLocal8Bit("杂粮米饭")
-          <<QString::fromLocal8Bit("鸡汤养生面")
-          <<QString::fromLocal8Bit("牛肉水饺");
+
     this->tableList.append(this->ui->stapleTableWidget);
     this->dishNameMap.insert(3,dishes);//Staple ends
     dishes.clear();
-    dishes<<QString::fromLocal8Bit("杨枝甘露")
-          <<QString::fromLocal8Bit("果蔬拌菜")
-          <<QString::fromLocal8Bit("鲜虾小笼包")
-          <<QString::fromLocal8Bit("榴莲饼");
+
     this->tableList.append(this->ui->snackTableWidget);
     this->tableList.append(this->ui->drinkTableWidget);
     this->dishNameMap.insert(4,dishes);//Snack ends
@@ -296,7 +431,9 @@ void mainWidget::initTableHeaders()
         table->horizontalHeader()->hide();
         table->verticalHeader()->hide();
         table->setColumnCount(5);
+        table->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     }
+    ui->orderTableWidget->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 }
 
 void mainWidget::insertDish(Dish d)
@@ -312,10 +449,11 @@ void mainWidget::insertDish(Dish d)
     table->setItem(i,1,new QTableWidgetItem("￥"+QString::number(d.price)));
     //dish amount
     QLabel* amtLabel=new QLabel(QString::number(0));
+    amtLabel->setAlignment(Qt::AlignCenter);
     table->setCellWidget(i,4,amtLabel);
 
     //add button, set tab index and dish index and added:a bool to show whether added
-    QPushButton* addBtn=new QPushButton("添加");
+    QPushButton* addBtn=new QPushButton("+");
     addBtn->setProperty("tabIndex",index);
     addBtn->setProperty("dishIndex",i);
     addBtn->setProperty("dishID",d.id);
@@ -324,7 +462,7 @@ void mainWidget::insertDish(Dish d)
     table->setCellWidget(i,2,addBtn);
 
     //sub button
-    QPushButton* subBtn=new QPushButton("减少");
+    QPushButton* subBtn=new QPushButton("-");
     subBtn->setProperty("tabIndex",index);
     subBtn->setProperty("dishIndex",i);
     subBtn->setProperty("dishID",d.id);
@@ -363,10 +501,11 @@ void mainWidget::initTableByIndex(int index)
 
        //dish amount
        QLabel* amtLabel=new QLabel(QString::number(0));
+       amtLabel->setAlignment(Qt::AlignCenter);
        table->setCellWidget(i,1,amtLabel);
 
        //add button, set tab index and dish index and added:a bool to show whether added
-       QPushButton* addBtn=new QPushButton("添加");
+       QPushButton* addBtn=new QPushButton("+");
        addBtn->setProperty("tabIndex",index);
        addBtn->setProperty("dishIndex",i);
        addBtn->setProperty("add",1);
@@ -374,7 +513,7 @@ void mainWidget::initTableByIndex(int index)
        table->setCellWidget(i,2,addBtn);
 
        //sub button
-       QPushButton* subBtn=new QPushButton("减少");
+       QPushButton* subBtn=new QPushButton("-");
        subBtn->setProperty("tabIndex",index);
        subBtn->setProperty("dishIndex",i);
        subBtn->setProperty("add",0);
@@ -386,8 +525,8 @@ void mainWidget::initTableByIndex(int index)
        subBtnList.insert(i,subBtn);
 
        //set button style
-       MyStyle::setButtonStyle(addBtn);
-       MyStyle::setButtonStyle(subBtn);
+       //MyStyle::setButtonStyle(addBtn);
+       //MyStyle::setButtonStyle(subBtn);
     }
 
 
@@ -404,23 +543,88 @@ void mainWidget::initOrderTable()
     QTableWidget* table=this->ui->orderTableWidget;
     table->clear();
     //hide headers
-    table->horizontalHeader()->hide();
+    //table->horizontalHeader()->hide();
+    QStringList headers;
+    headers<<"菜品"<<"单价"<<"数量"<<"总价";
+    table->setHorizontalHeaderLabels(headers);
     table->verticalHeader()->hide();
-    table->setColumnCount(2);
+    table->setColumnCount(4);
+    table->setRowCount(0);
+    qDebug()<<"list size "<<orderList.size()<<" pre:"<<preOrder.size();
+    //merge pre order and current order
+    for(int i=0;i<preOrder.size();++i){
+        int preID=preOrder.at(i).dish->id;
+        bool has=false;
+        //if has duplicated item
+        for(int j=0;j<orderList.size();++j){
+            if(preID==orderList.at(j).dish->id){
+                Order tmp;
+                tmp.dish=orderList.at(j).dish;
+                tmp.amount=orderList.at(j).amount+preOrder.at(i).amount;
+                orderList.removeAt(j);//delete the pre one and add new one
+                orderList.insert(j,tmp);
+                has=true;
+                break;
+            }
+        }
+        //append orderList
+        if(has==false){
+            orderList.append(preOrder.at(i));
+        }
+    }
+    preOrder.clear();
+    int amtSUM=0;
+    int totalSUM=0;
     //for each dish, add to table
     for(int i=0;i<this->orderList.size();++i){
         table->setRowCount(i+1);
-        int dishIndex=orderList.at(i).dishIndex;
-        int tabIndex=orderList.at(i).tabIndex;
+        //int dishIndex=orderList.at(i).dishIndex;
+        //int tabIndex=orderList.at(i).tabIndex;
+        QString name=orderList.at(i).dish->name;
+        int amt=orderList.at(i).amount;
+        int price=orderList.at(i).dish->price;
+        int total=amt*price;
         //dish name
-        qDebug()<<"name: "<<dishNameMap.find(tabIndex).value().at(dishIndex)<<" amount:"<<orderList.at(i).amount;
-        table->setItem(i,0,new QTableWidgetItem(this->dishNameMap.find(tabIndex).value().at(dishIndex)));
+        qDebug()<<"name: "<<name<<" amount:"<<amt;
+        table->setItem(i,0,new QTableWidgetItem(name));
+        //price
+        table->setItem(i,1,new QTableWidgetItem("￥"+QString::number(price)));
         //amount
-        table->setItem(i,1,new QTableWidgetItem(QString::number(orderList.at(i).amount)));
+        table->setItem(i,2,new QTableWidgetItem(QString::number(amt)));
+        //total
+        table->setItem(i,3,new QTableWidgetItem("￥"+QString::number(total)));
+        amtSUM+=amt;
+        totalSUM+=total;
     }
+    table->setRowCount(table->rowCount()+1);
+    table->setItem(table->rowCount()-1,2,new QTableWidgetItem(QString::number(amtSUM)));
+    table->setItem(table->rowCount()-1,3,new QTableWidgetItem("￥"+QString::number(totalSUM)));
 }
 
-//implement slots
+void mainWidget::addTableNumber()
+{
+    int ct=ui->tableLabel->text().toInt();
+    ct=(ct>=15)?1:(ct+1);
+    qDebug()<<"table:"<<ct;
+    ui->tableLabel->setNum(ct);
+    preOrder.clear();
+    orderList.clear();
+    fetchOrders();
+    flushAmt();
+}
+
+void mainWidget::subTableNumber()
+{
+    int ct=ui->tableLabel->text().toInt();
+    ct=(ct<=1)?15:(ct-1);
+    qDebug()<<"table:"<<ct;
+    ui->tableLabel->setNum(ct);
+    preOrder.clear();
+    orderList.clear();
+    fetchOrders();
+    flushAmt();
+}
+
 void mainWidget::addBtnClicked()
 {
     QPushButton* senderBtn=qobject_cast<QPushButton*>(sender());
@@ -440,16 +644,28 @@ void mainWidget::addBtnClicked()
     //find the dish index in orderList
     int index=-1;
     for(int i=0;i<orderList.size();++i){
-        if(dishIndex==orderList.at(i).dishIndex && tabIndex==orderList.at(i).tabIndex){
+        /*if(dishIndex==orderList.at(i).dishIndex && tabIndex==orderList.at(i).tabIndex){
+            index=i;
+            break;
+        }*/
+        //have pre one
+        if(dishID==orderList.at(i).dish->id){
             index=i;
             break;
         }
     }
     qDebug()<<index;
 
-    Dish tmp;
+    /*Dish tmp;
     tmp.dishIndex=dishIndex;
-    tmp.tabIndex=tabIndex;
+    tmp.tabIndex=tabIndex;*/
+    Order tmp;
+    for(int i=0;i<menu.size();++i){
+        if(dishID==menu[i].id){
+            tmp.dish=&menu[i];
+            break;
+        }
+    }
     //add amount
     if(added==true){
         amtLabel->setText(QString::number(++amt));
@@ -484,11 +700,23 @@ void mainWidget::addBtnClicked()
 
 void mainWidget::sendOrders()
 {
+    if(orderList.size()==0){
+        return;
+    }
     this->sendMessage();
+}
+
+void mainWidget::fetchOrders()
+{
+    int t=ui->tableLabel->text().toInt();
+    post->getOrders(t);
 }
 
 void mainWidget::sendMessage()
 {
+    if(orderList.size()==0){
+        return;
+    }
     this->ui->label->setText("clicked");
     QNetworkRequest request;
     request.setUrl(QUrl("http://www.dododawn.com:3888/order"));
@@ -502,13 +730,15 @@ void mainWidget::sendMessage()
 
     //QString mess="{chinese:状态码}";
     Mes mess;
-    mess.table=this->ui->tableSpinBox->value();
+    //mess.table=this->ui->tableSpinBox->value();
+    //mess.table=this->ui->tableLabel
+    mess.table=this->ui->tableLabel->text().toInt();
     QJsonObject json;
     QJsonArray orderJson;
     QJsonArray countJson;
     json.insert("table",mess.table);
     for(int i=0;i<orderList.size();++i){
-        mess.order.insert(i,orderList.at(i).tabIndex*10+orderList.at(i).dishIndex);
+        mess.order.insert(i,orderList.at(i).dish->id);
         mess.count.insert(i,orderList.at(i).amount);
 
         orderJson.insert(i,QJsonValue(mess.order.at(i)));
@@ -556,7 +786,29 @@ void mainWidget::requestFinished(QNetworkReply* reply)
     }
 }
 
- mainWidget::~mainWidget(    )
+void mainWidget::flushAmt()
+{
+    for(int i=0;i<tableList.count();++i){
+        QTableWidget* table=tableList.at(i);
+        for(int j=0;j<table->rowCount();++j){
+            QLabel* l=(QLabel*)table->cellWidget(j,4);
+            if(l!=nullptr){
+                l->setNum(0);
+            }
+        }
+    }
+}
+
+void mainWidget::paintEvent(QPaintEvent* )
+{
+    QStyleOption opt;
+    opt.init(this);
+    QPainter p(this);
+    style()->drawPrimitive(QStyle::PE_Widget,&opt,&p,this);
+    //QWidget::paintEvent(e);
+}
+
+mainWidget::~mainWidget(    )
 {
     delete ui;
 }

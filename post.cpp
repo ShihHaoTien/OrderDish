@@ -108,7 +108,7 @@ void Post::getOrdersFinished(QNetworkReply* reply)
         QByteArray array=reply->readAll();
         QString rev=QString::fromUtf8(array);
         //qDebug()<<array;
-        qDebug()<<rev;
+        //qDebug()<<rev;
         emit ordersString(rev.toUtf8());
         return;
         //qDebug() << reply->readAll();

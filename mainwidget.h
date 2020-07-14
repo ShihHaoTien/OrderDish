@@ -32,6 +32,12 @@ struct Dish
     QString name;
 };
 
+struct Order
+{
+    Dish* dish;
+    int amount;
+};
+
 
 class mainWidget : public QWidget
 {
@@ -45,7 +51,8 @@ public:
 private:
     Ui::mainWidget *ui;
     int tabCount;//the amount of dish type
-    QList<Dish> orderList;
+    QList<Order> orderList;
+    QList<Order> preOrder;
     QList<Dish> menu;
     QMap<int,QStringList> dishNameMap;//the map of dishes' name. Key is the tab index, value is a name list.
     QList<QTableWidget*> tableList;//the pointer of each table. Having same index with dishNameMap.
@@ -80,7 +87,13 @@ private slots:
     void tabChanged(int);//to determine whether at order page
     void sendOrders();
     void getOneInput(int);
+    void fetchOrders();//fetch current orders
+    void addTableNumber();
+    void subTableNumber();
+    void flushAmt();
 
+    //override
+    void paintEvent(QPaintEvent*);
 private slots:
     void requestFinished(QNetworkReply*);//get the reply of send orders
     //void receiveOrders(QNetworkReply*);//get the reply of current orders

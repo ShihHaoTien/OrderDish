@@ -1,11 +1,12 @@
 #include "inputer.h"
-//#include "wiringPi.h"
+#include "wiringPi.h"
 #include <qdebug.h>
 #define RED 1
 #define BLACK 5
 #define WHITE 27
 #define BLUE 26
 #define GREEN 7
+#define YELLOW 25
 #define NO -1
 
 Inputer::Inputer(QObject *parent) : QObject(parent)
@@ -15,7 +16,7 @@ Inputer::Inputer(QObject *parent) : QObject(parent)
 
 void Inputer::scanInput()
 {
-    /*qDebug()<<"start to scan!";
+    qDebug()<<"start to scan!";
     wiringPiSetup();
     //set five io as input port
     pinMode(RED,INPUT);
@@ -28,6 +29,8 @@ void Inputer::scanInput()
     pullUpDnControl(BLUE,PUD_UP);
     pinMode(GREEN,INPUT);
     pullUpDnControl(GREEN,PUD_UP);
+    pinMode(YELLOW,INPUT);
+    pullUpDnControl(YELLOW,PUD_UP);
 
     int res=NO;
     while (1) {
@@ -56,11 +59,16 @@ void Inputer::scanInput()
             res=GREEN;
             delay(50);
         }
+        else if (digitalRead(YELLOW)==LOW){
+            printf("green pressed\n");
+            res=GREEN;
+            delay(50);
+        }
         else {
             continue;
         }
         emit oneInput(res);
         delay(100);
-    }*/
+    }
 
 }
