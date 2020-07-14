@@ -53,8 +53,8 @@ mainWidget::mainWidget(QWidget *parent) :
     //init POST class
     post=new Post();
     connect(post,&Post::ordersString,this,&mainWidget::receiveOrders);
+    connect(post,&Post::menuString,this,&mainWidget::receiveMenu);
     //post->getOrders(1);
-
     post->getMenu();
 
     //set start state as 0
@@ -64,6 +64,63 @@ mainWidget::mainWidget(QWidget *parent) :
     currentDish=0;
     ui->tabWidget->setCurrentIndex(0);
     //ui->meatTab->setFocus();
+
+}
+
+//receive the menu list and init tables
+void mainWidget::receiveMenu(QString str)
+{
+    if(str==NULL){
+        qDebug()<<"GET MENU ERROR";
+        return;
+    }
+    qDebug()<<"Start init menu \n string is :"<<str;
+    QJsonParseError parseJsonErr;
+    QJsonDocument document = QJsonDocument::fromJson(str.toUtf8(),&parseJsonErr);
+    if(!(parseJsonErr.error == QJsonParseError::NoError))
+    {
+        qDebug()<<tr("解析json文件错误！");
+        return;
+    }
+
+    QJsonObject jsonObject = document.object();
+    //qDebug()<<"jsonObject[data]=="<<jsonObject["data"].toString();
+    if(jsonObject.contains(QStringLiteral("data")))
+    {
+        QJsonValue arrayValue = jsonObject.value(QStringLiteral("data"));
+        if(arrayValue.isArray())
+        {
+            QJsonArray array = arrayValue.toArray();
+            for(int i=0;i<array.size();i++)
+            {
+                QJsonValue dishArray = array.at(i);
+                QJsonObject dish = dishArray.toObject();
+                int id = dish["id"].toInt();
+                QString name = dish["name"].toString();
+                int type = dish["type"].toInt();
+                //int price = dish["price"].toInt();
+                QString pr=dish["price"].toString();
+                int price=pr.replace("\"","").toInt();
+                //qDebug()<<"id="<<id<<"iconTxt="<<iconTxt<<"iconName="<<iconName;
+                qDebug()<<"name: "<<name<<" type: "<<type<<" id: "<<id<<" price: "<<price<<" "<<pr;
+                Dish tmpD;
+                tmpD.id=id;
+                tmpD.name=name;
+                tmpD.tabIndex=type;
+                tmpD.price=price;
+                this->menu.insert(i,tmpD);//add to menu list
+            }
+        }
+    }
+    initTableHeaders();
+    initMenu();
+}
+
+void mainWidget::initMenu()
+{
+    for(int i=0;i<menu.size();++i){
+        insertDish(menu.at(i));
+    }
 }
 
 void mainWidget::receiveOrders(QString str)
@@ -208,17 +265,77 @@ void mainWidget::initDishMap()
           <<QString::fromLocal8Bit("鲜虾小笼包")
           <<QString::fromLocal8Bit("榴莲饼");
     this->tableList.append(this->ui->snackTableWidget);
+    this->tableList.append(this->ui->drinkTableWidget);
     this->dishNameMap.insert(4,dishes);//Snack ends
     dishes.clear();
-    this->tabCount=5;
+    this->tabCount=7;
 }
 
 void mainWidget::initTables()
 {
     for(int i=0;i<this->tabCount;++i){
-        initTableByIndex(i);
+        //initTableByIndex(i);
+        //init
     }
     initOrderTable();
+    //inti button map
+    for(int i=0;i<this->tabCount-1;++i){
+        QList<QPushButton*> adds;
+        QList<QPushButton*> subs;
+        //insert a k-v pair to button map
+        addBtnMap.insert(i,adds);
+        subBtnMap.insert(i,subs);
+    }
+}
+
+void mainWidget::initTableHeaders()
+{
+    for(int i=0;i<ui->tabWidget->count()-1;++i){
+        QTableWidget* table=this->tableList.at(i);
+        //hide headers
+        table->horizontalHeader()->hide();
+        table->verticalHeader()->hide();
+        table->setColumnCount(5);
+    }
+}
+
+void mainWidget::insertDish(Dish d)
+{
+    int index=d.tabIndex;
+    qDebug()<<"insert dish id: "<<d.id<<"at tab: "<<index;
+    QTableWidget* table=this->tableList.at(index);
+    table->setRowCount(table->rowCount()+1);//append a row
+    int i=table->rowCount()-1;
+    //dish name
+    table->setItem(i,0,new QTableWidgetItem(d.name));
+    //dish price
+    table->setItem(i,1,new QTableWidgetItem("￥"+QString::number(d.price)));
+    //dish amount
+    QLabel* amtLabel=new QLabel(QString::number(0));
+    table->setCellWidget(i,4,amtLabel);
+
+    //add button, set tab index and dish index and added:a bool to show whether added
+    QPushButton* addBtn=new QPushButton("添加");
+    addBtn->setProperty("tabIndex",index);
+    addBtn->setProperty("dishIndex",i);
+    addBtn->setProperty("dishID",d.id);
+    addBtn->setProperty("add",1);
+    connect(addBtn,SIGNAL(clicked()),this,SLOT(addBtnClicked()));
+    table->setCellWidget(i,2,addBtn);
+
+    //sub button
+    QPushButton* subBtn=new QPushButton("减少");
+    subBtn->setProperty("tabIndex",index);
+    subBtn->setProperty("dishIndex",i);
+    subBtn->setProperty("dishID",d.id);
+    subBtn->setProperty("add",0);
+    connect(subBtn,SIGNAL(clicked()),this,SLOT(addBtnClicked()));
+    table->setCellWidget(i,3,subBtn);
+
+    //add to btn map
+    addBtnMap.find(index).value().append(addBtn);
+    subBtnMap.find(index).value().append(subBtn);
+
 }
 
 void mainWidget::initTableByIndex(int index)
@@ -310,14 +427,15 @@ void mainWidget::addBtnClicked()
     if(senderBtn==NULL){
         return;
     }
+    int dishID=senderBtn->property("dishID").toInt();
     int dishIndex=senderBtn->property("dishIndex").toInt();
     int tabIndex=senderBtn->property("tabIndex").toInt();
     int t=senderBtn->property("add").toInt();
     bool added=(t==1);
     //get the label item
-    QLabel* amtLabel=(QLabel*)(this->tableList.at(tabIndex)->cellWidget(dishIndex,1));
+    QLabel* amtLabel=(QLabel*)(this->tableList.at(tabIndex)->cellWidget(dishIndex,4));
     int amt=amtLabel->text().toInt();
-    qDebug()<<"dish:"<<dishIndex<<" tab:"<<tabIndex<<" add  :"<<added<<" amount:"<<amt;
+    qDebug()<<"dish:"<<dishIndex<<" tab:"<<tabIndex<<" add  :"<<added<<" amount:"<<amt<<" id:"<<dishID;
 
     //find the dish index in orderList
     int index=-1;
@@ -399,7 +517,7 @@ void mainWidget::sendMessage()
     //mess.str="test string 测试字符串";
     //mess.str=mess.str.toUtf8();
     json.insert("order",QJsonValue(orderJson));
-    json.insert("count",QJsonValue(countJson));
+    json.insert("number",QJsonValue(countJson));
 
     //json.insert("test",mess.str);
 

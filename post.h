@@ -19,6 +19,7 @@ private slots:
 public:
     signals:
     void ordersString(const QString);
+    void menuString(const QString);
 };
 
 #endif // POST_H

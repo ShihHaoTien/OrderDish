@@ -23,7 +23,7 @@ void Post::getMenu()
 
     QNetworkAccessManager* netManager=new QNetworkAccessManager (this);
     QMetaObject::Connection connRet = QObject::connect(netManager, SIGNAL(finished(QNetworkReply*)),
-                                                       this, SLOT(getOrdersFinished(QNetworkReply*)));
+                                                       this, SLOT(getMenuFinished(QNetworkReply*)));
     Q_ASSERT(connRet);
 
     QJsonObject json;
@@ -36,8 +36,34 @@ void Post::getMenu()
     qDebug()<<"GET MENU:"<<json_str.toUtf8();;
 }
 
-void Post::getMenuFinished(QNetworkReply *)
+//send menu string signal
+void Post::getMenuFinished(QNetworkReply *reply)
 {
+    // 获取http状态码
+    QVariant statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
+    if(statusCode.isValid())
+        qDebug() << "status code=" << statusCode.toInt();
+
+    QVariant reason = reply->attribute(QNetworkRequest::HttpReasonPhraseAttribute).toString();
+    if(reason.isValid())
+        qDebug() << "reason=" << reason.toString();
+
+    QNetworkReply::NetworkError err = reply->error();
+    if(err != QNetworkReply::NoError) {
+        qDebug() << "Failed: " << reply->errorString();
+    }
+    else {
+        // 获取返回内容
+        QByteArray array=reply->readAll();
+        QString rev=QString::fromUtf8(array);
+        //qDebug()<<array;
+        //qDebug()<<rev;
+        //emit ordersString(rev.toUtf8());
+        emit menuString(rev.toUtf8());
+        return;
+        //qDebug() << reply->readAll();
+    }
+    emit menuString(NULL);
 
 }
 void Post::getOrders(int index)
