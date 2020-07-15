@@ -60,8 +60,8 @@ void Inputer::scanInput()
             delay(50);
         }
         else if (digitalRead(YELLOW)==LOW){
-            printf("green pressed\n");
-            res=GREEN;
+            printf("yellow pressed\n");
+            res=YELLOW;
             delay(50);
         }
         else {

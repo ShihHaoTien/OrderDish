@@ -75,6 +75,8 @@ private:
     void initTableHeaders();
     void insertDish(Dish);
 
+    bool readyQuit;
+
     Post* post;
 
 signals:
@@ -91,6 +93,8 @@ private slots:
     void addTableNumber();
     void subTableNumber();
     void flushAmt();
+    void quitAPP();
+
 
     //override
     void paintEvent(QPaintEvent*);

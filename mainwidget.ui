@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>564</width>
-    <height>964</height>
+    <height>900</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,19 +17,6 @@
    <iconset>
     <normaloff>食物.png</normaloff>食物.png</iconset>
   </property>
-  <widget class="QPushButton" name="pushButton">
-   <property name="geometry">
-    <rect>
-     <x>40</x>
-     <y>880</y>
-     <width>99</width>
-     <height>30</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>PushButton</string>
-   </property>
-  </widget>
   <widget class="QTabWidget" name="tabWidget">
    <property name="geometry">
     <rect>
@@ -40,10 +27,18 @@
     </rect>
    </property>
    <property name="styleSheet">
-    <string notr="true">QTabBar::tab{width:76}</string>
+    <string notr="true">QTabBar::tab{
+width:76;
+background-color:rgb(175,238,238);
+outline:none;
+}
+QTabBar::tab::selected{
+	background-color: rgb(0, 153, 255);
+	outline:none;
+}</string>
    </property>
    <property name="currentIndex">
-    <number>0</number>
+    <number>2</number>
    </property>
    <widget class="QWidget" name="meatTab">
     <attribute name="title">
@@ -202,20 +197,33 @@
       </item>
      </layout>
     </widget>
+    <widget class="QLabel" name="label">
+     <property name="geometry">
+      <rect>
+       <x>50</x>
+       <y>800</y>
+       <width>81</width>
+       <height>21</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>TextLabel</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="quitButton">
+     <property name="geometry">
+      <rect>
+       <x>440</x>
+       <y>800</y>
+       <width>99</width>
+       <height>30</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>关闭终端</string>
+     </property>
+    </widget>
    </widget>
-  </widget>
-  <widget class="QLabel" name="label">
-   <property name="geometry">
-    <rect>
-     <x>180</x>
-     <y>890</y>
-     <width>81</width>
-     <height>21</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>TextLabel</string>
-   </property>
   </widget>
  </widget>
  <layoutdefault spacing="6" margin="11"/>

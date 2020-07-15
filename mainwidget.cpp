@@ -31,11 +31,6 @@ mainWidget::mainWidget(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::mainWidget)
 {
-    ui->setupUi(this);
-    this->ui->label->setText("this is a test label");
-    this->setFixedSize(564,964);
-    qDebug("init mainWidget");
-
     //load qss
     QString qss;
     QFile qssFile(":/style.qss");
@@ -45,17 +40,23 @@ mainWidget::mainWidget(QWidget *parent) :
         qDebug()<<"qss!";
         qss = QLatin1String(qssFile.readAll());
         qDebug()<<qss;
-        qApp->setStyleSheet(qss);
+        setStyleSheet(qss);
         qssFile.close();
     }
 
 
-    ui->tableLabel->setNum(1);
+    ui->setupUi(this);
+    //this->ui->label->setText("this is a test label");
+    this->setFixedSize(564,900);
+    qDebug("init mainWidget");   
 
+    ui->tableLabel->setNum(1);
+    readyQuit=false;
 
 
     //connections
-    connect(ui->pushButton,SIGNAL(clicked()),this,SLOT(sendMessage()));
+    //connect(ui->pushButton,SIGNAL(clicked()),this,SLOT(sendMessage()));
+    connect(ui->quitButton,SIGNAL(clicked()),this,SLOT(quitAPP()));
     connect(ui->tabWidget,SIGNAL(currentChanged(int)),this,SLOT(tabChanged(int)));
     connect(ui->checkButton,SIGNAL(clicked()),this,SLOT(sendOrders()));
     connect(ui->addTableButton,SIGNAL(clicked()),this,SLOT(addTableNumber()));
@@ -91,7 +92,12 @@ mainWidget::mainWidget(QWidget *parent) :
     currentDish=0;
     ui->tabWidget->setCurrentIndex(ui->tabWidget->count()-1);
     //ui->meatTab->setFocus();
-    ui->addTableButton->setStyleSheet("background-color:rgb(175,238,238)");
+    ui->addTableButton->setStyleSheet("QPushButton{background-color:rgb(175,238,238);outline:none}");
+    ui->subTableButton->setStyleSheet("QPushButton{background-color:rgb(175,238,238);outline:none}");
+    ui->checkButton->setStyleSheet("QPushButton{background-color:rgb(175,238,238);outline:none}");
+    ui->quitButton->setStyleSheet("QPushButton{background-color:rgb(175,238,238);outline:none}");
+
+    ui->label->setText("等待点餐");
 }
 
 //receive the menu list and init tables
@@ -241,11 +247,12 @@ void mainWidget::stateSwitch(int input)
                 state=1;
                 //set focus on the add button in first row
                 addBtnMap.find(currentTab).value().at(0)->setFocus();
+                addBtnMap.find(currentTab).value().at(0)->setStyleSheet({"background-color:#0099FF;outline:none"});
             }else if(currentTab==ui->tabWidget->count()-1){
                 state=3;
                 //get in order page
                 ui->addTableButton->setFocus();
-                ui->addTableButton->setStyleSheet({"background-color:#0099FF"});
+                ui->addTableButton->setStyleSheet({"background-color:#0099FF;outline:none"});
             }
             break;
         }else if(input==RIGHT){        //if not,update current tab index and do not change state
@@ -267,52 +274,67 @@ void mainWidget::stateSwitch(int input)
     case 1:
         //turn to sub button column
         if(input==RIGHT){
+            addBtnMap.find(currentTab).value().at(currentDish)->setStyleSheet("QPushButton{background-color:rgb(175,238,238);outline:none}");
             subBtnMap.find(currentTab).value().at(currentDish)->setFocus();
+            subBtnMap.find(currentTab).value().at(currentDish)->setStyleSheet({"background-color:#0099FF;outline:none"});
             state=2;
             break;
         }else if(input==CONFIRM){
             emit addBtnMap.find(currentTab).value().at(currentDish)->clicked();
         }else if(input==DOWN){
+            addBtnMap.find(currentTab).value().at(currentDish)->setStyleSheet("QPushButton{background-color:rgb(175,238,238);outline:none}");
             currentDish+=1;
             if(currentDish>=tableList.at(currentTab)->rowCount()){
                 currentDish=0;
             }
         }else if(input==UP){
+            addBtnMap.find(currentTab).value().at(currentDish)->setStyleSheet("QPushButton{background-color:rgb(175,238,238);outline:none}");
             currentDish-=1;
             if(currentDish<0){
                 currentDish=tableList.at(currentTab)->rowCount()-1;
             }
         }else if(input==BACK){
+            addBtnMap.find(currentTab).value().at(currentDish)->setStyleSheet("QPushButton{background-color:rgb(175,238,238);outline:none}");
             state=0;
             ui->tabWidget->setCurrentIndex(currentTab);
             currentDish=0;
+            break;
         }
         addBtnMap.find(currentTab).value().at(currentDish)->setFocus();
+        addBtnMap.find(currentTab).value().at(currentDish)->setStyleSheet({"background-color:#0099FF;outline:none"});
         break;
 
     //cursor in sub button column
     case 2:
         if(input==LEFT){
+            subBtnMap.find(currentTab).value().at(currentDish)->setStyleSheet("QPushButton{background-color:rgb(175,238,238);outline:none}");
             addBtnMap.find(currentTab).value().at(currentDish)->setFocus();
+            addBtnMap.find(currentTab).value().at(currentDish)->setStyleSheet({"background-color:#0099FF;outline:none"});
             state=1;
             break;
         }else if(input==CONFIRM){
             emit subBtnMap.find(currentTab).value().at(currentDish)->clicked();
         }else if(input==DOWN){
+            subBtnMap.find(currentTab).value().at(currentDish)->setStyleSheet("QPushButton{background-color:rgb(175,238,238);outline:none}");
             currentDish+=1;
             if(currentDish>=tableList.at(currentTab)->rowCount()){
                 currentDish=0;
             }
         }else if(input==UP){
+            subBtnMap.find(currentTab).value().at(currentDish)->setStyleSheet("QPushButton{background-color:rgb(175,238,238)}");
             currentDish-=1;
             if(currentDish<0){
                 currentDish=tableList.at(currentTab)->rowCount()-1;
             }
         }else if(input==BACK){
+            subBtnMap.find(currentTab).value().at(currentDish)->setStyleSheet("QPushButton{background-color:rgb(175,238,238);outline:none}");
             state=0;
             ui->tabWidget->setCurrentIndex(currentTab);
+            currentDish=0;
+            break;
         }
         subBtnMap.find(currentTab).value().at(currentDish)->setFocus();
+        subBtnMap.find(currentTab).value().at(currentDish)->setStyleSheet({"background-color:#0099FF;outline:none"});
         break;
 
     //cursor on add table button
@@ -320,15 +342,20 @@ void mainWidget::stateSwitch(int input)
         //go to sub button or check button
         if(input==RIGHT){
             ui->subTableButton->setFocus();
+            ui->subTableButton->setStyleSheet({"background-color:#0099FF;outline:none"});
+            ui->addTableButton->setStyleSheet("QPushButton{background-color:rgb(175,238,238);outline:none}");
             state=4;
         }else if(input==DOWN){
             ui->checkButton->setFocus();
+            ui->addTableButton->setStyleSheet("QPushButton{background-color:rgb(175,238,238);outline:none}");
+            ui->checkButton->setStyleSheet({"background-color:#0099FF;outline:none"});
             state=5;
         }else if(input==CONFIRM){
             emit ui->addTableButton->clicked();
         }else if(input==BACK){
             state=0;
             ui->tabWidget->setCurrentIndex(currentTab);
+            ui->addTableButton->setStyleSheet("QPushButton{background-color:rgb(175,238,238);outline:none}");
         }
         break;
 
@@ -336,15 +363,20 @@ void mainWidget::stateSwitch(int input)
     case 4:
         if(input==LEFT){
             ui->addTableButton->setFocus();
+            ui->addTableButton->setStyleSheet({"background-color:#0099FF;outline:none"});
+            ui->subTableButton->setStyleSheet("QPushButton{background-color:rgb(175,238,238);outline:none}");
             state=3;
         }else if(input==DOWN){
             ui->checkButton->setFocus();
+            ui->subTableButton->setStyleSheet("QPushButton{background-color:rgb(175,238,238);outline:none}");
+            ui->checkButton->setStyleSheet({"background-color:#0099FF;outline:none"});
             state=5;
         }else if(input==CONFIRM){
             emit ui->subTableButton->clicked();
         }else if(input==BACK){
             state=0;
             ui->tabWidget->setCurrentIndex(currentTab);
+            ui->subTableButton->setStyleSheet("QPushButton{background-color:rgb(175,238,238)};outline:none");
         }
         break;
 
@@ -354,10 +386,34 @@ void mainWidget::stateSwitch(int input)
             emit ui->checkButton->clicked();
         }else if(input==UP){
             ui->addTableButton->setFocus();
+            ui->addTableButton->setStyleSheet({"background-color:#0099FF;outline:none"});
+            ui->checkButton->setStyleSheet("QPushButton{background-color:rgb(175,238,238);outline:none}");
             state=3;
         }else if(input==BACK){
             state=0;
             ui->tabWidget->setCurrentIndex(currentTab);
+            ui->checkButton->setStyleSheet("QPushButton{background-color:rgb(175,238,238);outline:none}");
+        }else if(input==RIGHT){
+            state=6;
+            ui->quitButton->setFocus();
+            ui->quitButton->setStyleSheet({"background-color:#0099FF;outline:none"});
+            ui->checkButton->setStyleSheet("QPushButton{background-color:rgb(175,238,238);outline:none}");
+        }
+        break;
+
+    //cursor on quit button
+    case 6:
+        if(input==LEFT){
+            state=5;
+            ui->checkButton->setFocus();
+            ui->checkButton->setStyleSheet({"background-color:#0099FF;outline:none"});
+            ui->quitButton->setStyleSheet("QPushButton{background-color:rgb(175,238,238);outline:none}");
+        }else if(input==CONFIRM){
+            emit ui->quitButton->clicked();
+        }else if(input==BACK){
+            state=0;
+            ui->tabWidget->setCurrentIndex(currentTab);
+            ui->quitButton->setStyleSheet("QPushButton{background-color:rgb(175,238,238);outline:none}");
         }
         break;
 
@@ -368,7 +424,7 @@ void mainWidget::stateSwitch(int input)
 
 void mainWidget::getOneInput(int i)
 {
-    this->ui->label->setText(QString::number(i));
+    //this->ui->label->setText(QString::number(i));
     this->stateSwitch(i);//trans state
 }
 
@@ -470,6 +526,8 @@ void mainWidget::insertDish(Dish d)
     connect(subBtn,SIGNAL(clicked()),this,SLOT(addBtnClicked()));
     table->setCellWidget(i,3,subBtn);
 
+    addBtn->setStyleSheet("QPushButton{background-color:rgb(175,238,238);outline:none}");
+    subBtn->setStyleSheet("QPushButton{background-color:rgb(175,238,238);outline:none}");
     //add to btn map
     addBtnMap.find(index).value().append(addBtn);
     subBtnMap.find(index).value().append(subBtn);
@@ -611,6 +669,7 @@ void mainWidget::addTableNumber()
     orderList.clear();
     fetchOrders();
     flushAmt();
+    ui->label->setText("等待点餐");
 }
 
 void mainWidget::subTableNumber()
@@ -623,6 +682,7 @@ void mainWidget::subTableNumber()
     orderList.clear();
     fetchOrders();
     flushAmt();
+    ui->label->setText("等待点餐");
 }
 
 void mainWidget::addBtnClicked()
@@ -717,7 +777,7 @@ void mainWidget::sendMessage()
     if(orderList.size()==0){
         return;
     }
-    this->ui->label->setText("clicked");
+    //this->ui->label->setText("clicked");
     QNetworkRequest request;
     request.setUrl(QUrl("http://www.dododawn.com:3888/order"));
 
@@ -755,7 +815,7 @@ void mainWidget::sendMessage()
     document.setObject(json);
     QByteArray byte_array = document.toJson(QJsonDocument::Compact);
     QString json_str(byte_array);
-    ui->label->setText(json_str);
+    //ui->label->setText(json_str);
 
     QNetworkReply* reply=netManager->put(request,json_str.toUtf8());//send data
     qDebug()<<json_str.toUtf8();
@@ -782,6 +842,7 @@ void mainWidget::requestFinished(QNetworkReply* reply)
         QString rev=QString::fromUtf8(array);
         qDebug()<<array;
         qDebug()<<rev;
+        ui->label->setText("点餐成功");
         //qDebug() << reply->readAll();
     }
 }
@@ -808,7 +869,21 @@ void mainWidget::paintEvent(QPaintEvent* )
     //QWidget::paintEvent(e);
 }
 
-mainWidget::~mainWidget(    )
+void mainWidget::quitAPP()
+{
+    //doule clicked then quit
+    if(readyQuit==true){
+        QApplication* app;
+        app->quit();
+    }
+    else {
+        readyQuit=true;
+        ui->quitButton->setStyleSheet("QPushButton{background-color:#FF9933;outline:none}");
+    }
+
+}
+
+mainWidget::~mainWidget()
 {
     delete ui;
 }

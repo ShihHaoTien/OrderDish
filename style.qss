@@ -1,1 +1,24 @@
-
+.QPushButton,
+.QToolButton {
+    background: #FFF;
+    border: 1px solid #DCDFE6;
+    color: #606266;
+    padding: 5px;
+    min-height: 15px;
+    /*border-radius: 5px;*/
+}
+.QPushButton:hover,
+.QToolButton:hover {
+    color: #409EFF;
+    border-color: #c6e2ff;
+    background-color: #ecf5ff;
+}
+.QPushButton:pressed,
+.QToolButton:pressed {
+    color: #3a8ee6;
+    border-color: #3a8ee6;
+    outline: 0;
+}
+.QToolButton::menu-indicator {
+    image: None;
+}
